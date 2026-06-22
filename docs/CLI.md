@@ -392,11 +392,13 @@ smooth import FILE [--dry-run] [--no-preserve] [--source ACTOR]
 ```
 
 Import tool data from a known vendor format into catalog records. The format is
-detected from the file:
+detected from the file (XML formats are told apart by their root element):
 - **DIN 4000** — CSV and XML (ToolsUnited 2013 & 2016, incl. the decimal‑comma variant)
 - **STEP P21** (`.p21`/`.stp`) — ISO 13399 cutting‑tool data
 - **GTC package** (`.zip`) — ISO 13399, both GTC 2.x and the GTC 2017/ToolsUnited
   layout; also carries the tool's **3D models and images** as canonical media
+- **SolidCAM** — its tool‑export XML (`<Results>`)
+- **hyperMILL** — OPEN MIND `omtdx` XML
 
 Each tool becomes a `ToolCatalogRecord` with the nominal geometry the format
 states (diameter, shank diameter, length, flutes, depth of cut, and the shape its

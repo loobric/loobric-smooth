@@ -6,9 +6,9 @@ API and depends on nothing from the server.
 
 > **Status:** the importable library (`smooth_client.Client`) and the `smooth`
 > CLI are here, ported from the old single-file `loobric.py`. `smooth import`
-> reads **DIN 4000** (CSV/XML), **STEP P21**, and **GTC packages** (ISO 13399,
-> with 3D models + images uploaded as canonical media) — see
-> [docs/IMPORTERS_PLAN.md](docs/IMPORTERS_PLAN.md). SolidCAM is next. See
+> reads **DIN 4000** (CSV/XML), **STEP P21**, **GTC packages** (ISO 13399, with
+> 3D models + images uploaded as canonical media), **SolidCAM**, and **hyperMILL**
+> exports — see [docs/IMPORTERS_PLAN.md](docs/IMPORTERS_PLAN.md). See
 > [docs/adr/0001-extract-loobric-smooth.md](docs/adr/0001-extract-loobric-smooth.md).
 
 ## Install
