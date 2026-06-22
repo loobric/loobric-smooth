@@ -8,11 +8,19 @@ license = { text = "MIT" }
 authors = [{ name = "sliptonic" }]
 # The core library and CLI are intentionally stdlib-only, so the package stays
 # vendorable and runnable in constrained interpreters.
+keywords = ["cnc", "cam", "tool-data", "freecad", "linuxcnc", "machining"]
+classifiers = [
+      "Development Status :: 3 - Alpha",
+      "License :: OSI Approved :: MIT License",
+      "Programming Language :: Python :: 3",
+      "Topic :: Scientific/Engineering",
+      "Intended Audience :: Manufacturing"]
 dependencies = []
 
 [project.optional-dependencies]
-# Format parsers (DIN4000 / GTC / P21 / TDM / Zoller / SolidCAM / HyperMill, see
-# smooth-core#31) live behind this extra so the base install carries no weight.
+# DIN 4000 import (CSV + XML) is stdlib-only and ships in the base install. This
+# extra is for formats that need heavier parsers — GTC/ISO 13399 P21 (steputils),
+# large-XML XSD validation (lxml), etc. (see smooth-core#31 and docs/IMPORTERS_PLAN.md).
 importers = ["lxml>=5.0"]
 completion = ["argcomplete>=3.0"]
 dev = ["pytest>=7.4"]
@@ -26,3 +34,8 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 include = ["smooth_client*"]
+
+[project.urls]
+Homepage = "https://github.com/loobric/loobric-smooth"
+Repository = "https://github.com/loobric/loobric-smooth"
+Issues = "https://github.com/loobric/loobric-smooth/issues"

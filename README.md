@@ -4,17 +4,21 @@ Python client for [Smooth Core](https://github.com/loobric/smooth-core) — the
 library and CLI for synchronizing CNC tool data. It speaks only the public REST
 API and depends on nothing from the server.
 
-> **Status:** extraction in progress. The importable library (`smooth_client.Client`)
-> and the `smooth` CLI are here, ported from the old single-file `loobric.py`. Format
-> importers and removing the old client from `smooth-core` are next. See
-> [docs/adr/0001-extract-loobric-smooth.md](docs/adr/0001-extract-loobric-smooth.md).
+> **Status:** the importable library (`smooth_client.Client`) and the `smooth`
+> CLI are here, ported from the old single-file `loobric.py`. Format importers
+> have started — `smooth import` reads **DIN 4000** CSV and XML
+> ([docs/IMPORTERS_PLAN.md](docs/IMPORTERS_PLAN.md)); GTC / ISO 13399 and SolidCAM
+> are next. See [docs/adr/0001-extract-loobric-smooth.md](docs/adr/0001-extract-loobric-smooth.md).
 
 ## Install
 
 ```bash
-pip install loobric-smooth            # library + CLI (stdlib only, no deps)
-pip install "loobric-smooth[importers]"   # + format importers (DIN4000/GTC/P21/...)
+pip install loobric-smooth            # library + CLI + DIN 4000 import (stdlib only, no deps)
+pip install "loobric-smooth[importers]"   # + heavier-dependency importers (GTC/P21/..., when added)
 ```
+
+DIN 4000 import is stdlib-only and works with the base install; the `[importers]`
+extra is for formats that need extra parsers (e.g. STEP/P21).
 
 ## Library
 
