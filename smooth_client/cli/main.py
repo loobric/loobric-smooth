@@ -786,6 +786,72 @@ def list_catalog_records():
         print("=" * 78)
 
 
+def _print_draft(draft):
+    """Show the canonical fields a parsed draft would create (dry-run view)."""
+    cls = f" [{draft.source_class}]" if draft.source_class else ""
+    print(f"  • {draft.name or '(unnamed)'}{cls}")
+    ident = "  ".join(p for p in (draft.manufacturer, draft.product_code) if p)
+    if ident:
+        print(f"      {ident}")
+    geom = draft.fields.get("geometry") or {}
+    for key, leaf in geom.items():
+        if isinstance(leaf, dict):
+            unit = leaf.get("unit", "")
+            print(f"      {key}: {leaf.get('value')}{unit}")
+    missing = draft.missing_identity()
+    if missing:
+        print(f"      ! missing identity: {', '.join(missing)} — would be skipped")
+
+
+def import_tools(path, source=None, dry_run=False, no_preserve=False):
+    """Import tool data from a known format into catalog records.
+
+    Currently supports DIN 4000 CSV and XML (the ToolsUnited 2013 & 2016
+    editions). Parsing is offline; --dry-run shows exactly what would be created
+    without sending anything. Each record's full source payload is preserved
+    verbatim in its client section unless --no-preserve is given."""
+    from smooth_client.importers import din4000
+    from smooth_client.importers.run import import_drafts
+
+    try:
+        drafts = din4000.parse(path)
+    except FileNotFoundError:
+        print(f"Error: file not found: {path}", file=sys.stderr)
+        sys.exit(1)
+    if not drafts:
+        print("No tool records found in the file.")
+        return
+
+    if dry_run:
+        print(f"Parsed {len(drafts)} record(s) from {path} "
+              f"(dry run — nothing sent):")
+        for draft in drafts:
+            _print_draft(draft)
+        return
+
+    def on_event(kind, draft, info):
+        name = draft.name or "(unnamed)"
+        if kind == "create":
+            print(f"  ✓ created {name} [{str(info)[:8]}]")
+        elif kind == "skip":
+            print(f"  – skipped {name}: {info}")
+        elif kind == "fail":
+            print(f"  ✗ failed {name}: {info}")
+        elif kind == "preserve_fail":
+            print(f"  ! {name}: created, but preserving raw payload failed: {info}")
+
+    report = import_drafts(
+        _client(), drafts,
+        source=source or din4000.SOURCE,
+        client_name=din4000.CLIENT_NAME,
+        preserve=not no_preserve, on_event=on_event)
+    print(f"\nImport complete: {len(report.created)} created, "
+          f"{len(report.skipped)} skipped, {len(report.failed)} failed.")
+    if report.created:
+        print(f"Every canonical field carries source "
+              f"'asserted:{source or din4000.SOURCE}'.")
+
+
 def _print_field(label, leaf, indent="  "):
     """Show one canonical field with its provenance — value, optional unit, and
     the source it came from (the whole point: fabrication stays visible)."""
@@ -1428,6 +1494,23 @@ Environment Variables:
     assert_parser.add_argument("value", help="Value (JSON-parsed if possible, else string)")
     assert_parser.set_defaults(
         func=lambda args: assert_canonical(args.resource, args.record_id, args.path, args.value))
+
+    # === import (format importers) ===
+    import_parser = subparsers.add_parser(
+        "import",
+        help="Import tool data from a known format (DIN 4000 CSV/XML) into catalog records")
+    import_parser.add_argument("file", help="Path to the export file (.csv or .xml)")
+    import_parser.add_argument(
+        "--source", default=None,
+        help="Declared actor; the server stamps asserted:<source> (default: din4000-import)")
+    import_parser.add_argument(
+        "--dry-run", action="store_true",
+        help="Parse and show what would be created, without sending anything")
+    import_parser.add_argument(
+        "--no-preserve", action="store_true",
+        help="Do not store the raw source payload in the record's client section")
+    import_parser.set_defaults(func=lambda args: import_tools(
+        args.file, source=args.source, dry_run=args.dry_run, no_preserve=args.no_preserve))
 
     # === ping ===
     ping_parser = subparsers.add_parser(
