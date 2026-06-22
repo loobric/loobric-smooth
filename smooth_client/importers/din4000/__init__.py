@@ -39,6 +39,8 @@ def parse(path: Union[str, Path]) -> List[CatalogRecordDraft]:
             raw=props,
             source_format=fmt,
             source_class=nsm,
+            source_actor=SOURCE,
+            client_name=CLIENT_NAME,
         ))
     return drafts
 

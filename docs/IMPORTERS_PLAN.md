@@ -189,6 +189,15 @@ against `smooth/contract/models.py`), so none get rejected or silently dropped.
 
 ## 4. The hard part: ISO 13399 property semantics
 
+> **Update (resolved by the real files):** the research feared we'd need the
+> paywalled PLIB dictionary to decode P21 property codes. We don't — the
+> CIMSOURCE/ToolsUnited generator writes the readable ISO 13399 mnemonic into
+> every value entity (`NUMERICAL_VALUE('DC', …)`, `STRING_VALUE('GRADE', …)`),
+> exactly like DIN's codes. A curated mnemonic map (DC/OAL/APMX/ZEFF/DCONMS…)
+> covers the geometry; the opaque `PLIB_*_REFERENCE` codes are ignored. The text
+> below is kept for the general case (a P21 lacking inline mnemonics would still
+> need the dictionary).
+
 P21/STEP is **easy to tokenize, hard to interpret.** A `.p21` file stores values
 against opaque PLIB property codes (e.g. `PLIB_PROPERTY_REFERENCE('71CF29872F0AB', …)`),
 not human labels. Turning a code into "cutting diameter" requires the **ISO 13399
@@ -241,23 +250,43 @@ decode comes last.
   rather than a later phase. **The headline test invariant: all three variants
   parse to byte‑identical canonical fields.** Driver handles natural‑key `409`
   as *skipped*, preserves the full raw payload in the record's client section.
-- **Phase 2 — GTC package identity layer.** `zipfile` + `package_assortment.xml`
-  (stdlib). Covers GTC17/GTC20/TDM/Zoller/HyperMill exports for name/manufacturer/
-  code/class. High coverage for low cost; no PLIB needed.
-- **Phase 3 — P21 geometry.** Add `steputils`, extract values, apply the curated
-  ISO 13399 code map (§4). Geometry on the records from Phase 2.
+- **Phase 2 — GTC package + Phase 3 — P21 geometry. ✅ DONE (together).**
+  `smooth_client/importers/p21.py` is a stdlib line tokenizer for STEP Part 21;
+  `gtc.py` reads a GTC ZIP. **Key finding from the real Kennametal exports:** the
+  CIMSOURCE/ToolsUnited P21 writes the human-readable ISO 13399 *mnemonic* into
+  every value entity (`NUMERICAL_VALUE('DC', $, #119, '6.35')`), so identity AND
+  geometry come straight out — **no `steputils`, no PLIB dictionary, stdlib
+  only.** One reader handles **both** GTC 2.x and GTC 2017 (the ToolsUnited
+  per-file inner-zip layout — unwrapped transparently). The 3D STEP models +
+  images are extracted and uploaded as **canonical media** (smooth-core's new
+  `media` feature). `shape` comes from the GTC class (`MILSQS → endmill`),
+  `item_type` from the P21 `SPECIFIC_ITEM_CLASSIFICATION('tool item')`. Verified
+  against real GTC17, GTC20, and standalone P21; 8 tests, synthetic fixtures.
 - ~~**Phase 4 — DIN 4000 XML (2013 + 2016).**~~ **Folded into Phase 1.** One
   tolerant `etree` reader handles both ToolsUnited DTDs (`DIN_4000_Schema.dtd`
   and `..._2015.dtd`); they differ only in the `Main-Data` block and decimal
   format (point vs comma), both handled. New DIN 4000 *classes* (drills, etc.)
   still need their own per‑class code map (`_codes.CLASS_MAPS`) + a sample.
-- **Phase 5 — SolidCAM CSV/XLS.** Separate lineage; drive off SolidCAM's own
-  export (parametric milling tools only — 3D‑model‑defined tools don't export to CSV).
+- **Phase 5 — SolidCAM + hyperMILL native exports. ✅ DONE.** Both export
+  self‑describing `<param name= value=>` XML, so `solidcam.py` (`<Results>/<Tool>`)
+  and `hypermill.py` (OPEN MIND `omtdx`) are thin readers sharing `_util.py`.
+  Identity + geometry (diameter/shank/length/cutting‑length/flutes) + `shape`
+  from the declared subtype (`EndMill`/`endMill`). The dispatcher tells the three
+  XML formats apart by **root element** (`Tool-Data`→DIN, `Results`→SolidCAM,
+  `omtdx`→hyperMILL). Verified against real Kennametal exports of the same tool;
+  both yield identical geometry. (hyperMILL native was a bonus — the plan assumed
+  we'd go via its ISO 13399 export, but the native `omtdx` is clean.) The
+  original SolidCAM *CSV/XLS* path is moot — the XML export is richer and is what
+  the tool actually produces.
 
-**Deferred / out of scope (document, don't build):** TDM native DB, Zoller
-`zidCode`/z.One native, HyperMill `.db`/`.mdb`, SolidCAM `.TAB`/`.tlv`/`.tls`/`.tlm`.
-For each, the README/docs should say "export ISO 13399 / GTC (or CSV) from the
-vendor tool and import that."
+**Done across the formats:** DIN 4000 (CSV/XML), GTC/ISO 13399/P21 (+ media),
+SolidCAM (XML), hyperMILL (`omtdx` XML). The GTC/ISO 13399 reader also covers
+**TDM** and **Zoller** since they export it.
+
+**Still deferred (no sample, or no clean export):** TDM native DB and Zoller
+`zidCode`/z.One native (proprietary, undocumented — use their ISO 13399/GTC
+export instead), and the proprietary *binaries* we deliberately skip in favor of
+the XML exports above (HyperMill `.db`/`.mdb`, SolidCAM `.TAB`/`.tlv`/`.tls`).
 
 ---
 

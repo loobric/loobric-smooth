@@ -11,6 +11,18 @@ IDENTITY_FIELDS = ("name", "manufacturer", "product_code")
 
 
 @dataclass
+class MediaFile:
+    """A media file a parser extracted (a 3D model, drawing, image) to be
+    uploaded to the record's canonical media after it is created. The bytes are
+    carried here; the run driver streams them to the server's media endpoint."""
+
+    role: str                                 # a MEDIA_ROLE: model_3d / image / ...
+    filename: str
+    data: bytes
+    content_type: str = "application/octet-stream"
+
+
+@dataclass
 class CatalogRecordDraft:
     """One catalog record a parser produced, before it is sent.
 
@@ -18,13 +30,20 @@ class CatalogRecordDraft:
     ``{value, unit?}`` leaf map :meth:`Client.create_catalog_record` expects
     (the server stamps the ``asserted:<source>`` provenance). ``raw`` is the
     full source payload, kept verbatim so the import is lossless and the
-    unmapped source codes survive for later promotion.
+    unmapped source codes survive for later promotion. ``media`` is any files to
+    attach to the record's canonical media once it exists.
     """
 
     fields: Dict[str, Any]
     raw: Dict[str, Any]
-    source_format: str                       # e.g. "din4000-csv" / "din4000-xml"
-    source_class: Optional[str] = None        # e.g. "DIN4000-82"
+    source_format: str                       # e.g. "din4000-csv" / "gtc" / "p21"
+    source_class: Optional[str] = None        # e.g. "DIN4000-82" / "MILSQS"
+    media: List[MediaFile] = field(default_factory=list)
+    # Per-format defaults the run driver/CLI use when not overridden: the
+    # declared actor (server stamps asserted:<actor>) and the client-section name
+    # the raw payload is preserved under.
+    source_actor: str = "import"
+    client_name: str = "import"
 
     def _leaf_value(self, key: str) -> Any:
         leaf = self.fields.get(key)

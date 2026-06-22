@@ -16,6 +16,52 @@ not state. A code we cannot pin to a meaning is preserved verbatim, never
 guessed (the "every imported tool became an endmill" failure the schema exists
 to prevent).
 """
-from smooth_client.importers.base import CatalogRecordDraft
+import re
+from pathlib import Path
+from typing import List, Union
 
-__all__ = ["CatalogRecordDraft"]
+from smooth_client.importers.base import CatalogRecordDraft, MediaFile
+
+__all__ = ["CatalogRecordDraft", "MediaFile", "parse"]
+
+# XML root element -> importer module name. Lets one `.xml` extension fan out to
+# the ToolsUnited DIN 4000, SolidCAM, and hyperMILL formats.
+_XML_ROOTS = {
+    "tool-data": "din4000",     # ToolsUnited DIN 4000
+    "results": "solidcam",      # SolidCAM <Results><Tools><Tool>
+    "omtdx": "hypermill",       # OPEN MIND hyperMILL
+}
+
+
+def parse(path: Union[str, Path]) -> List[CatalogRecordDraft]:
+    """Detect the format from the file and dispatch to the right importer.
+
+    - ``.zip`` (or a PK header) → GTC package (ISO 13399, with media)
+    - ``.p21`` / ``.stp`` / ``.step`` / an ``ISO-10303-21`` header → STEP P21
+    - XML → by root element: DIN 4000 / SolidCAM / hyperMILL
+    - ``.csv`` (or anything else) → DIN 4000
+    """
+    name = str(path).lower()
+    head = Path(path).read_bytes()[:2048]
+    if name.endswith(".zip") or head[:2] == b"PK":
+        from smooth_client.importers import gtc
+        return gtc.parse(path)
+    if (name.endswith((".p21", ".stp", ".step"))
+            or head.lstrip().startswith(b"ISO-10303-21")):
+        from smooth_client.importers import p21
+        return p21.parse(path)
+    if name.endswith(".xml") or head.lstrip()[:1] == b"<":
+        module = _XML_ROOTS.get(_xml_root_tag(head), "din4000")
+        mod = __import__("smooth_client.importers." + module, fromlist=["parse"])
+        return mod.parse(path)
+    from smooth_client.importers import din4000
+    return din4000.parse(path)
+
+
+def _xml_root_tag(head: bytes) -> str:
+    """The first element name (namespace/declaration/doctype stripped), lowercased."""
+    text = head.decode("utf-8-sig", errors="replace")
+    text = re.sub(r"<\?.*?\?>", "", text, flags=re.S)   # drop <?xml …?>
+    text = re.sub(r"<!.*?>", "", text, flags=re.S)       # drop <!DOCTYPE …> / comments
+    m = re.search(r"<([A-Za-z_][\w.\-]*)", text)
+    return m.group(1).lower() if m else ""

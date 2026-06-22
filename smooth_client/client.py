@@ -258,6 +258,31 @@ class Client:
             "client_version": client_version, "client_item_id": client_item_id, "data": data,
         })
 
+    def upload_media(self, resource: str, record_id: str, *, data: bytes,
+                     filename: str, role: str,
+                     content_type: str = "application/octet-stream",
+                     actor: Optional[str] = None) -> Dict[str, Any]:
+        """Attach a media file (3D model, drawing, image) to a record's canonical
+        media. Multipart upload (stdlib, no requests): the server stores the bytes
+        content-addressed and stamps asserted:<actor> on the reference."""
+        boundary = "----loobricMediaBoundary7MA4YWxkTrZu0gW"
+
+        def _field(name: str, value: str) -> bytes:
+            return (f"--{boundary}\r\n"
+                    f'Content-Disposition: form-data; name="{name}"\r\n\r\n'
+                    f"{value}\r\n").encode("utf-8")
+
+        body = _field("role", role)
+        if actor is not None:
+            body += _field("actor", actor)
+        body += (
+            f"--{boundary}\r\n"
+            f'Content-Disposition: form-data; name="file"; filename="{filename}"\r\n'
+            f"Content-Type: {content_type}\r\n\r\n"
+        ).encode("utf-8") + data + b"\r\n" + f"--{boundary}--\r\n".encode("utf-8")
+        return self._send("POST", f"/{resource}/{record_id}/media", raw_body=body,
+                          content_type=f"multipart/form-data; boundary={boundary}")
+
     # -- record creation (instance / catalog / entry) ------------------------
     def create_tool_record(self, **section) -> Dict[str, Any]:
         return self._call("POST", "/tool-instance-records", body=dict(section))

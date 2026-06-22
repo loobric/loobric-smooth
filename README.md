@@ -5,10 +5,11 @@ library and CLI for synchronizing CNC tool data. It speaks only the public REST
 API and depends on nothing from the server.
 
 > **Status:** the importable library (`smooth_client.Client`) and the `smooth`
-> CLI are here, ported from the old single-file `loobric.py`. Format importers
-> have started — `smooth import` reads **DIN 4000** CSV and XML
-> ([docs/IMPORTERS_PLAN.md](docs/IMPORTERS_PLAN.md)); GTC / ISO 13399 and SolidCAM
-> are next. See [docs/adr/0001-extract-loobric-smooth.md](docs/adr/0001-extract-loobric-smooth.md).
+> CLI are here, ported from the old single-file `loobric.py`. `smooth import`
+> reads **DIN 4000** (CSV/XML), **STEP P21**, **GTC packages** (ISO 13399, with
+> 3D models + images uploaded as canonical media), **SolidCAM**, and **hyperMILL**
+> exports — see [docs/IMPORTERS_PLAN.md](docs/IMPORTERS_PLAN.md). See
+> [docs/adr/0001-extract-loobric-smooth.md](docs/adr/0001-extract-loobric-smooth.md).
 
 ## Install
 
