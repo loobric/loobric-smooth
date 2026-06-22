@@ -1501,8 +1501,9 @@ Environment Variables:
     # === import (format importers) ===
     import_parser = subparsers.add_parser(
         "import",
-        help="Import tool data from a known format (DIN 4000 CSV/XML) into catalog records")
-    import_parser.add_argument("file", help="Path to the export file (.csv or .xml)")
+        help="Import tool data from a known format (DIN 4000, STEP P21, GTC, "
+             "SolidCAM, hyperMILL) into catalog records")
+    import_parser.add_argument("file", help="Path to the export file (.csv/.xml/.p21/.zip)")
     import_parser.add_argument(
         "--source", default=None,
         help="Declared actor; the server stamps asserted:<source> (default: din4000-import)")
