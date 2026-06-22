@@ -14,11 +14,11 @@ dependencies = []
 # Format parsers (DIN4000 / GTC / P21 / TDM / Zoller / SolidCAM / HyperMill, see
 # smooth-core#31) live behind this extra so the base install carries no weight.
 importers = ["lxml>=5.0"]
+completion = ["argcomplete>=3.0"]
 dev = ["pytest>=7.4"]
 
-# The CLI console script activates once the cli/ port lands (next step):
-# [project.scripts]
-# smooth = "smooth_client.cli.main:main"
+[project.scripts]
+smooth = "smooth_client.cli.main:main"
 
 [build-system]
 requires = ["setuptools>=68"]

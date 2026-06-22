@@ -5,8 +5,9 @@ library and CLI for synchronizing CNC tool data. It speaks only the public REST
 API and depends on nothing from the server.
 
 > **Status:** extraction in progress. The importable library (`smooth_client.Client`)
-> is here; the CLI and format importers are being ported from the old single-file
-> `loobric.py`. See [docs/adr/0001-extract-smooth-client.md](docs/adr/0001-extract-smooth-client.md).
+> and the `smooth` CLI are here, ported from the old single-file `loobric.py`. Format
+> importers and removing the old client from `smooth-core` are next. See
+> [docs/adr/0001-extract-smooth-client.md](docs/adr/0001-extract-smooth-client.md).
 
 ## Install
 
@@ -31,8 +32,14 @@ never prints or exits, so callers handle failure themselves.
 
 ## CLI
 
-`smooth <verb>` — *coming with the CLI port.* It will be the universal
-command-line client (the role the old `loobric` command served).
+`smooth <verb>` is the universal command-line client (the role the old `loobric`
+command served). See the [CLI reference and walkthrough](docs/CLI.md).
+
+```bash
+smooth --help
+smooth list-machines
+smooth create-record --from-catalog B201 --name "1/4 downcut"
+```
 
 ## License
 

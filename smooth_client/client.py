@@ -11,7 +11,7 @@ Returns parsed data; raises SmoothClientError subclasses. Stdlib only.
 import json
 from typing import Any, Dict, List, Optional
 
-from smooth_client import transport
+from smooth_client import transport as transport_mod
 from smooth_client.errors import (
     AuthRequired, ConnectionFailed, HTTPError, NotFound, SmoothClientError,
 )
@@ -22,7 +22,7 @@ class Client:
 
     def __init__(self, base_url: Optional[str] = None, api_key: Optional[str] = None,
                  session_cookie: Optional[str] = None, transport=None):
-        self.base_url = (base_url or transport.BASE_URL or "").rstrip("/")
+        self.base_url = (base_url or transport_mod.BASE_URL or "").rstrip("/")
         self.api_key = api_key
         self.session_cookie = session_cookie
         # transport(method, endpoint, **kw) -> dict, raising SmoothClientError. Defaults
@@ -32,7 +32,7 @@ class Client:
         self._transport = transport
 
     def _send(self, method: str, endpoint: str, **kw):
-        return (self._transport or transport.make_request)(
+        return (self._transport or transport_mod.make_request)(
             method, endpoint, base_url=self.base_url or None,
             api_key=self.api_key, session_cookie=self.session_cookie, **kw)
 
