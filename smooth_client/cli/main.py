@@ -798,6 +798,9 @@ def _print_draft(draft):
         if isinstance(leaf, dict):
             unit = leaf.get("unit", "")
             print(f"      {key}: {leaf.get('value')}{unit}")
+    if draft.media:
+        roles = ", ".join(sorted({m.role for m in draft.media}))
+        print(f"      media: {len(draft.media)} file(s) [{roles}]")
     missing = draft.missing_identity()
     if missing:
         print(f"      ! missing identity: {', '.join(missing)} — would be skipped")
@@ -806,15 +809,16 @@ def _print_draft(draft):
 def import_tools(path, source=None, dry_run=False, no_preserve=False):
     """Import tool data from a known format into catalog records.
 
-    Currently supports DIN 4000 CSV and XML (the ToolsUnited 2013 & 2016
-    editions). Parsing is offline; --dry-run shows exactly what would be created
-    without sending anything. Each record's full source payload is preserved
-    verbatim in its client section unless --no-preserve is given."""
-    from smooth_client.importers import din4000
+    Detects the format: DIN 4000 (CSV/XML), STEP P21, or a GTC package (.zip,
+    ISO 13399 — also carries 3D models/images as canonical media). Parsing is
+    offline; --dry-run shows exactly what would be created without sending. Each
+    record's full source payload is preserved in its client section unless
+    --no-preserve is given."""
+    from smooth_client import importers
     from smooth_client.importers.run import import_drafts
 
     try:
-        drafts = din4000.parse(path)
+        drafts = importers.parse(path)
     except FileNotFoundError:
         print(f"Error: file not found: {path}", file=sys.stderr)
         sys.exit(1)
@@ -839,17 +843,16 @@ def import_tools(path, source=None, dry_run=False, no_preserve=False):
             print(f"  ✗ failed {name}: {info}")
         elif kind == "preserve_fail":
             print(f"  ! {name}: created, but preserving raw payload failed: {info}")
+        elif kind == "media":
+            print(f"      ↑ media: {info.role} ({info.filename})")
+        elif kind == "media_fail":
+            print(f"      ! media upload failed ({info.filename}): {info}")
 
-    report = import_drafts(
-        _client(), drafts,
-        source=source or din4000.SOURCE,
-        client_name=din4000.CLIENT_NAME,
-        preserve=not no_preserve, on_event=on_event)
+    report = import_drafts(_client(), drafts, source=source,
+                           preserve=not no_preserve, on_event=on_event)
     print(f"\nImport complete: {len(report.created)} created, "
-          f"{len(report.skipped)} skipped, {len(report.failed)} failed.")
-    if report.created:
-        print(f"Every canonical field carries source "
-              f"'asserted:{source or din4000.SOURCE}'.")
+          f"{len(report.skipped)} skipped, {len(report.failed)} failed"
+          f"{f', {report.media_uploaded} media uploaded' if report.media_uploaded else ''}.")
 
 
 def _print_field(label, leaf, indent="  "):

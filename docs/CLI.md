@@ -391,16 +391,21 @@ unique prefix, name, or product code.
 smooth import FILE [--dry-run] [--no-preserve] [--source ACTOR]
 ```
 
-Import tool data from a known vendor format into catalog records. Currently
-supports **DIN 4000** — CSV and XML (the ToolsUnited 2013 and 2016 editions,
-including the 2016 decimal‑comma variant); the format is detected from the file.
+Import tool data from a known vendor format into catalog records. The format is
+detected from the file:
+- **DIN 4000** — CSV and XML (ToolsUnited 2013 & 2016, incl. the decimal‑comma variant)
+- **STEP P21** (`.p21`/`.stp`) — ISO 13399 cutting‑tool data
+- **GTC package** (`.zip`) — ISO 13399, both GTC 2.x and the GTC 2017/ToolsUnited
+  layout; also carries the tool's **3D models and images** as canonical media
 
 Each tool becomes a `ToolCatalogRecord` with the nominal geometry the format
-states (diameter, shank diameter, length, flutes, and the shape its DIN class
-declares). The server stamps `asserted:<source>` on every field — the client
-writes no provenance. Fields the format does not state are left `unknown`, never
-guessed. The full source payload is preserved verbatim in the record's client
-section (disable with `--no-preserve`).
+states (diameter, shank diameter, length, flutes, depth of cut, and the shape its
+class declares). For a GTC package, the 3D STEP models and images are uploaded as
+the record's canonical media (viewable in the web UI). The server stamps
+`asserted:<source>` on every field — the client writes no provenance. Fields the
+format does not state are left `unknown`, never guessed. The full source payload
+is preserved verbatim in the record's client section (disable with
+`--no-preserve`).
 
 Re‑importing the same catalog is safe: records that already exist (matched by the
 `manufacturer` + `product_code` natural key) are reported as *skipped*, not
@@ -410,8 +415,11 @@ duplicated.
 # See exactly what would be created, without sending anything:
 smooth import 6767731.csv --dry-run
 
-# Import for real (a session/base URL must be configured):
+# Import a DIN 4000 export (a session/base URL must be configured):
 smooth import 6767731.xml --source manufacturer:kennametal
+
+# Import a GTC package — creates the record and uploads its 3D models + images:
+smooth import 6676918.zip
 ```
 
 `--dry-run` parses offline and prints the canonical fields per record. `--source`

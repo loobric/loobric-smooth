@@ -189,6 +189,15 @@ against `smooth/contract/models.py`), so none get rejected or silently dropped.
 
 ## 4. The hard part: ISO 13399 property semantics
 
+> **Update (resolved by the real files):** the research feared we'd need the
+> paywalled PLIB dictionary to decode P21 property codes. We don't — the
+> CIMSOURCE/ToolsUnited generator writes the readable ISO 13399 mnemonic into
+> every value entity (`NUMERICAL_VALUE('DC', …)`, `STRING_VALUE('GRADE', …)`),
+> exactly like DIN's codes. A curated mnemonic map (DC/OAL/APMX/ZEFF/DCONMS…)
+> covers the geometry; the opaque `PLIB_*_REFERENCE` codes are ignored. The text
+> below is kept for the general case (a P21 lacking inline mnemonics would still
+> need the dictionary).
+
 P21/STEP is **easy to tokenize, hard to interpret.** A `.p21` file stores values
 against opaque PLIB property codes (e.g. `PLIB_PROPERTY_REFERENCE('71CF29872F0AB', …)`),
 not human labels. Turning a code into "cutting diameter" requires the **ISO 13399
@@ -241,11 +250,18 @@ decode comes last.
   rather than a later phase. **The headline test invariant: all three variants
   parse to byte‑identical canonical fields.** Driver handles natural‑key `409`
   as *skipped*, preserves the full raw payload in the record's client section.
-- **Phase 2 — GTC package identity layer.** `zipfile` + `package_assortment.xml`
-  (stdlib). Covers GTC17/GTC20/TDM/Zoller/HyperMill exports for name/manufacturer/
-  code/class. High coverage for low cost; no PLIB needed.
-- **Phase 3 — P21 geometry.** Add `steputils`, extract values, apply the curated
-  ISO 13399 code map (§4). Geometry on the records from Phase 2.
+- **Phase 2 — GTC package + Phase 3 — P21 geometry. ✅ DONE (together).**
+  `smooth_client/importers/p21.py` is a stdlib line tokenizer for STEP Part 21;
+  `gtc.py` reads a GTC ZIP. **Key finding from the real Kennametal exports:** the
+  CIMSOURCE/ToolsUnited P21 writes the human-readable ISO 13399 *mnemonic* into
+  every value entity (`NUMERICAL_VALUE('DC', $, #119, '6.35')`), so identity AND
+  geometry come straight out — **no `steputils`, no PLIB dictionary, stdlib
+  only.** One reader handles **both** GTC 2.x and GTC 2017 (the ToolsUnited
+  per-file inner-zip layout — unwrapped transparently). The 3D STEP models +
+  images are extracted and uploaded as **canonical media** (smooth-core's new
+  `media` feature). `shape` comes from the GTC class (`MILSQS → endmill`),
+  `item_type` from the P21 `SPECIFIC_ITEM_CLASSIFICATION('tool item')`. Verified
+  against real GTC17, GTC20, and standalone P21; 8 tests, synthetic fixtures.
 - ~~**Phase 4 — DIN 4000 XML (2013 + 2016).**~~ **Folded into Phase 1.** One
   tolerant `etree` reader handles both ToolsUnited DTDs (`DIN_4000_Schema.dtd`
   and `..._2015.dtd`); they differ only in the `Main-Data` block and decimal

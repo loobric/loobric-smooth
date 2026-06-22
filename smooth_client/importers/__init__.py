@@ -16,6 +16,29 @@ not state. A code we cannot pin to a meaning is preserved verbatim, never
 guessed (the "every imported tool became an endmill" failure the schema exists
 to prevent).
 """
-from smooth_client.importers.base import CatalogRecordDraft
+from pathlib import Path
+from typing import List, Union
 
-__all__ = ["CatalogRecordDraft"]
+from smooth_client.importers.base import CatalogRecordDraft, MediaFile
+
+__all__ = ["CatalogRecordDraft", "MediaFile", "parse"]
+
+
+def parse(path: Union[str, Path]) -> List[CatalogRecordDraft]:
+    """Detect the format from the file and dispatch to the right importer.
+
+    - ``.zip`` (or a PK header) → GTC package (ISO 13399, with media)
+    - ``.p21`` / ``.stp`` / ``.step`` / an ``ISO-10303-21`` header → STEP P21
+    - everything else → DIN 4000 (CSV or XML)
+    """
+    name = str(path).lower()
+    head = Path(path).read_bytes()[:32]
+    if name.endswith(".zip") or head[:2] == b"PK":
+        from smooth_client.importers import gtc
+        return gtc.parse(path)
+    if (name.endswith((".p21", ".stp", ".step"))
+            or head.lstrip().startswith(b"ISO-10303-21")):
+        from smooth_client.importers import p21
+        return p21.parse(path)
+    from smooth_client.importers import din4000
+    return din4000.parse(path)

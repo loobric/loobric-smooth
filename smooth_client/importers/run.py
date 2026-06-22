@@ -28,13 +28,17 @@ class ImportReport:
     # Created, but storing the raw payload afterward failed — the canonical
     # record exists; only the lossless copy is missing. Surfaced, not swallowed.
     preserve_failed: List[Tuple[Any, Exception]] = field(default_factory=list)
+    media_uploaded: int = 0
+    media_failed: List[Tuple[Any, Any, Exception]] = field(default_factory=list)
 
 
-def import_drafts(client, drafts, *, source: str = "din4000-import",
-                  client_name: str = "import:din4000", preserve: bool = True,
+def import_drafts(client, drafts, *, source: Optional[str] = None,
+                  client_name: Optional[str] = None, preserve: bool = True,
                   on_event: Optional[Callable[[str, Any, Any], None]] = None) -> ImportReport:
-    """Create a catalog record per draft. ``on_event(kind, draft, info)`` is
-    called for progress (kinds: ``create``/``skip``/``fail``/``preserve_fail``)."""
+    """Create a catalog record per draft, preserve its raw payload, and upload its
+    media. ``source``/``client_name`` override the per-draft defaults when given.
+    ``on_event(kind, draft, info)`` reports progress (kinds: ``create``/``skip``/
+    ``fail``/``preserve_fail``/``media``/``media_fail``)."""
     report = ImportReport()
     for draft in drafts:
         missing = draft.missing_identity()
@@ -44,8 +48,10 @@ def import_drafts(client, drafts, *, source: str = "din4000-import",
             _emit(on_event, "skip", draft, reason)
             continue
 
+        actor = source or draft.source_actor
+        cname = client_name or draft.client_name
         try:
-            rec = client.create_catalog_record(source=source, fields=draft.fields)
+            rec = client.create_catalog_record(source=actor, fields=draft.fields)
         except HTTPError as e:
             if e.status == 409:                      # natural-key duplicate (M2)
                 report.skipped.append((draft, "already exists (natural-key 409)"))
@@ -62,17 +68,31 @@ def import_drafts(client, drafts, *, source: str = "din4000-import",
         rid = (rec.get("internal") or {}).get("id")
         report.created.append((draft, rec))
         _emit(on_event, "create", draft, rid)
+        if rid is None:
+            continue
 
-        if preserve and rid:
+        if preserve:
             try:
                 client.sync_client_section(
-                    "tool-catalog-records", rid, client_name,
+                    "tool-catalog-records", rid, cname,
                     data={"format": draft.source_format,
                           "class": draft.source_class,
                           "properties": draft.raw})
             except SmoothClientError as e:
                 report.preserve_failed.append((draft, e))
                 _emit(on_event, "preserve_fail", draft, e)
+
+        for mf in draft.media:
+            try:
+                client.upload_media("tool-catalog-records", rid, data=mf.data,
+                                    filename=mf.filename, role=mf.role,
+                                    content_type=mf.content_type, actor=actor)
+            except SmoothClientError as e:
+                report.media_failed.append((draft, mf, e))
+                _emit(on_event, "media_fail", draft, mf)
+            else:
+                report.media_uploaded += 1
+                _emit(on_event, "media", draft, mf)
 
     return report
 
