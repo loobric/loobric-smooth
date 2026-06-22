@@ -1,5 +1,5 @@
 [project]
-name = "smooth-client"
+name = "loobric-smooth"
 version = "0.1.0"
 description = "Python client library and CLI for Smooth Core (CNC tool-data sync)."
 readme = "README.md"

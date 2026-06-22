@@ -17,16 +17,13 @@ and [Match a machine and a CAM tool set you built separately](HOWTO_MATCH_MACHIN
 
 ## Installing the command
 
-`smooth` is installed with `smooth-core`. From a clone:
+Install from PyPI:
 
 ```bash
-cd smooth-core
-uv venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
-uv pip install -e ".[dev]"
+pip install loobric-smooth
 ```
 
-After this, `smooth` is on your PATH inside the virtual environment:
+`smooth` is then on your PATH:
 
 ```bash
 smooth --help
@@ -44,7 +41,7 @@ the CLI stays stdlib-only and runs fine without it; completion just switches on
 once it is installed and registered.
 
 ```bash
-uv pip install -e ".[completion]"     # or: pip install argcomplete
+pip install "loobric-smooth[completion]"     # or: pip install argcomplete
 ```
 
 Then register it, **for the same command name you actually type**:
@@ -649,9 +646,9 @@ T3 now reads `bound -> <record>`. From here, changes on either side route
 between the entry and the record. If you ever got it wrong, `unbind <machine> 3`
 puts the entry back to `unbound` without losing its data.
 
-## Using smooth-client as a library
+## Using loobric-smooth as a library
 
-`smooth-client` is MIT-licensed and importable. The same `Client` class the CLI
+`loobric-smooth` is MIT-licensed and importable. The same `Client` class the CLI
 uses is the reference implementation other Python clients (FreeCAD, etc.) reuse,
 so you don't have to write your own HTTP client:
 
@@ -674,4 +671,4 @@ except NotFound:
 Client methods return parsed data and raise `SmoothClientError` subclasses on
 failure — `NotFound`, `AuthRequired`, `HTTPError`, and `ConnectionFailed` — so
 callers handle errors instead of parsing printed output. The library is
-stdlib-only, so `pip install smooth-client` adds no third-party dependencies.
+stdlib-only, so `pip install loobric-smooth` adds no third-party dependencies.

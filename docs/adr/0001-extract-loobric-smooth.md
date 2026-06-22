@@ -1,4 +1,4 @@
-# ADR 0001 — Extract the client into `smooth-client`
+# ADR 0001 — Extract the client into `loobric-smooth`
 
 **Status:** Accepted (2026-06-22) · **Supersedes:** the single-file `loobric.py` shipped in `smooth-core`.
 
@@ -16,16 +16,16 @@ and shipping the client from the server repo conflated two concerns.
 ## Decisions
 
 1. **Dedicated repository** — the client moves out of `smooth-core` into its own
-   repo, `smooth-client`. Runtime depends on nothing from the server (it only
+   repo, `loobric-smooth`. Runtime depends on nothing from the server (it only
    speaks the public REST API). `smooth-core` keeps its reference-client role via
    a dev/test dependency for integration tests.
-2. **Naming** — distribution **`smooth-client`**, import package **`smooth_client`**,
+2. **Naming** — distribution **`loobric-smooth`**, import package **`smooth_client`**,
    CLI command **`smooth`**. "Loobric" is the organization, not an application, so
    application surfaces drop it. The import package is `smooth_client` (not
    `smooth`) deliberately: `smooth-core` already owns the `smooth` import name and
    the two co-exist when the server dev-depends on the client.
-3. **Distribution via PyPI with extras** — `pip install smooth-client` (stdlib
-   only) for library + CLI; `pip install smooth-client[importers]` pulls the heavy
+3. **Distribution via PyPI with extras** — `pip install loobric-smooth` (stdlib
+   only) for library + CLI; `pip install loobric-smooth[importers]` pulls the heavy
    parser deps used only by the importer subpackage.
 4. **FreeCAD consumes the package via pip** (confirmed supported for addons) —
    no more hand-vendored copy.

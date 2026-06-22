@@ -1,4 +1,4 @@
-# smooth-client
+# loobric-smooth
 
 Python client for [Smooth Core](https://github.com/loobric/smooth-core) — the
 library and CLI for synchronizing CNC tool data. It speaks only the public REST
@@ -7,13 +7,13 @@ API and depends on nothing from the server.
 > **Status:** extraction in progress. The importable library (`smooth_client.Client`)
 > and the `smooth` CLI are here, ported from the old single-file `loobric.py`. Format
 > importers and removing the old client from `smooth-core` are next. See
-> [docs/adr/0001-extract-smooth-client.md](docs/adr/0001-extract-smooth-client.md).
+> [docs/adr/0001-extract-loobric-smooth.md](docs/adr/0001-extract-loobric-smooth.md).
 
 ## Install
 
 ```bash
-pip install smooth-client            # library + CLI (stdlib only, no deps)
-pip install "smooth-client[importers]"   # + format importers (DIN4000/GTC/P21/...)
+pip install loobric-smooth            # library + CLI (stdlib only, no deps)
+pip install "loobric-smooth[importers]"   # + format importers (DIN4000/GTC/P21/...)
 ```
 
 ## Library

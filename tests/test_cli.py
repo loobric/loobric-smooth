@@ -687,7 +687,7 @@ def test_whoami_reports_old_server_without_version_endpoint(monkeypatch, capsys)
 
 
 # --- Regression: session-file paths (login/logout) reference transport.SESSION_FILE,
-# --- which moved out of the CLI module during the smooth-core -> smooth-client port.
+# --- which moved out of the CLI module during the smooth-core -> loobric-smooth port.
 
 def test_login_saves_session_without_nameerror(monkeypatch, tmp_path, capsys):
     sess = tmp_path / "session.json"
