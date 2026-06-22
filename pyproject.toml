@@ -1,0 +1,28 @@
+[project]
+name = "smooth-client"
+version = "0.1.0"
+description = "Python client library and CLI for Smooth Core (CNC tool-data sync)."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "sliptonic" }]
+# The core library and CLI are intentionally stdlib-only, so the package stays
+# vendorable and runnable in constrained interpreters.
+dependencies = []
+
+[project.optional-dependencies]
+# Format parsers (DIN4000 / GTC / P21 / TDM / Zoller / SolidCAM / HyperMill, see
+# smooth-core#31) live behind this extra so the base install carries no weight.
+importers = ["lxml>=5.0"]
+dev = ["pytest>=7.4"]
+
+# The CLI console script activates once the cli/ port lands (next step):
+# [project.scripts]
+# smooth = "smooth_client.cli.main:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["smooth_client*"]
