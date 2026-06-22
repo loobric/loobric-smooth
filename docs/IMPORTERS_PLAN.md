@@ -267,13 +267,26 @@ decode comes last.
   and `..._2015.dtd`); they differ only in the `Main-Data` block and decimal
   format (point vs comma), both handled. New DIN 4000 *classes* (drills, etc.)
   still need their own per‑class code map (`_codes.CLASS_MAPS`) + a sample.
-- **Phase 5 — SolidCAM CSV/XLS.** Separate lineage; drive off SolidCAM's own
-  export (parametric milling tools only — 3D‑model‑defined tools don't export to CSV).
+- **Phase 5 — SolidCAM + hyperMILL native exports. ✅ DONE.** Both export
+  self‑describing `<param name= value=>` XML, so `solidcam.py` (`<Results>/<Tool>`)
+  and `hypermill.py` (OPEN MIND `omtdx`) are thin readers sharing `_util.py`.
+  Identity + geometry (diameter/shank/length/cutting‑length/flutes) + `shape`
+  from the declared subtype (`EndMill`/`endMill`). The dispatcher tells the three
+  XML formats apart by **root element** (`Tool-Data`→DIN, `Results`→SolidCAM,
+  `omtdx`→hyperMILL). Verified against real Kennametal exports of the same tool;
+  both yield identical geometry. (hyperMILL native was a bonus — the plan assumed
+  we'd go via its ISO 13399 export, but the native `omtdx` is clean.) The
+  original SolidCAM *CSV/XLS* path is moot — the XML export is richer and is what
+  the tool actually produces.
 
-**Deferred / out of scope (document, don't build):** TDM native DB, Zoller
-`zidCode`/z.One native, HyperMill `.db`/`.mdb`, SolidCAM `.TAB`/`.tlv`/`.tls`/`.tlm`.
-For each, the README/docs should say "export ISO 13399 / GTC (or CSV) from the
-vendor tool and import that."
+**Done across the formats:** DIN 4000 (CSV/XML), GTC/ISO 13399/P21 (+ media),
+SolidCAM (XML), hyperMILL (`omtdx` XML). The GTC/ISO 13399 reader also covers
+**TDM** and **Zoller** since they export it.
+
+**Still deferred (no sample, or no clean export):** TDM native DB and Zoller
+`zidCode`/z.One native (proprietary, undocumented — use their ISO 13399/GTC
+export instead), and the proprietary *binaries* we deliberately skip in favor of
+the XML exports above (HyperMill `.db`/`.mdb`, SolidCAM `.TAB`/`.tlv`/`.tls`).
 
 ---
 
