@@ -3,6 +3,15 @@
 All notable changes to **loobric-smooth** (the Smooth client library + `smooth` CLI)
 are recorded here. This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] — 2026-06-23
+
+### Added
+- **`show-machine`, `show-tool`, `show-key`** — every listable entity now has a
+  matching show verb (full list/show symmetry). Each resolves by id, name, or
+  unique prefix. `show-tool` prints a tool instance with full provenance;
+  `show-machine` adds its tool-table summary and linked sets; `show-key` resolves
+  one API key.
+
 ## [0.2.0] — 2026-06-22
 
 ### Added

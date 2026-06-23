@@ -4,13 +4,18 @@ Python client for [Smooth Core](https://github.com/loobric/smooth-core) — the
 library and CLI for synchronizing CNC tool data. It speaks only the public REST
 API and depends on nothing from the server.
 
-> **New in v0.2.0 — `smooth import`.** Stop re-typing tool data. One command
-> auto-detects the format and turns a vendor export into catalog records on your
-> server: **DIN 4000** (CSV + XML 2013/2016), **STEP P21**, **GTC packages**
-> (ISO 13399), **SolidCAM**, and **hyperMILL**. Every imported field keeps its
-> source, and the raw payload is preserved verbatim so nothing is lost or guessed.
-> GTC packages also carry the tool's 3D STEP models and images, uploaded as
-> canonical media on servers whose media backend is enabled. See
+> **New in v0.3.0 — full list/show symmetry.** Every listable entity now has a
+> matching `show` verb: `show-machine`, `show-tool`, and `show-key` join the
+> existing `show-*` commands, each resolving its target by id, name, or unique
+> prefix. List to find it, show to inspect it — one consistent pattern everywhere.
+>
+> **`smooth import` — stop re-typing tool data.** One command auto-detects the
+> format and turns a vendor export into catalog records on your server:
+> **DIN 4000** (CSV + XML 2013/2016), **STEP P21**, **GTC packages** (ISO 13399),
+> **SolidCAM**, and **hyperMILL**. Every imported field keeps its source, and the
+> raw payload is preserved verbatim so nothing is lost or guessed. GTC packages
+> also carry the tool's 3D STEP models and images, uploaded as canonical media on
+> servers whose media backend is enabled. See
 > [docs/IMPORTERS_PLAN.md](docs/IMPORTERS_PLAN.md).
 >
 > The importable library (`smooth_client.Client`) and the `smooth` CLI are both
@@ -51,8 +56,14 @@ command served). See the [CLI reference and walkthrough](docs/CLI.md).
 ```bash
 smooth --help
 smooth list-machines
+smooth show-machine mill01            # by name, id, or unique prefix
 smooth create-record --from-catalog B201 --name "1/4 downcut"
+smooth show-tool "1/4 downcut"        # one instance, full provenance
 ```
+
+Every `list-*` verb has a matching `show-*` verb (`show-machine`, `show-tool`,
+`show-tool-set`, `show-key`, …), each resolving its target by id, name, or
+unique prefix — list to find it, show to inspect it.
 
 ### Importing tool data
 
