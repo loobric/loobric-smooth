@@ -597,6 +597,114 @@ def test_show_catalog_record_resolves_by_product_code(api, capsys):
     assert "1/4in 2FL Endmill" in capsys.readouterr().out
 
 
+# ---------------------------------------------------------------------------
+# show-* single-record views (show-tool / show-machine / show-key): resolve a
+# handle client-side and render the record with provenance.
+# ---------------------------------------------------------------------------
+
+def test_show_tool_resolves_and_shows_provenance(api, capsys):
+    cli.show_tool("instanceid1")
+    assert api.last("GET")["endpoint"].startswith("/tool-instance-records")
+    out = capsys.readouterr().out
+    assert "Tool Record" in out
+    assert "instanceid1" in out                 # internal.id
+    assert "1/4 downcut" in out                 # canonical.name.value
+    assert "endmill" in out                     # canonical.geometry.shape.value
+    assert "6.35 mm" in out                     # geometry.diameter value + unit
+    assert "observed:linuxcnc@haas" in out      # provenance badge on a leaf
+    assert "asserted:human@web" in out
+
+
+def test_show_tool_errors_on_no_match(api, capsys):
+    with pytest.raises(SystemExit):
+        cli.show_tool("nope")
+    assert "no tool record matches" in capsys.readouterr().err
+
+
+def test_show_machine_shows_table_and_provenance(api, capsys):
+    cli.show_machine("machineid1")
+    out = capsys.readouterr().out
+    assert "Machine" in out
+    assert "Haas Mini" in out                   # canonical.name.value
+    assert "linuxcnc" in out                    # canonical.controller_type.value
+    assert "asserted:cfg" in out                # provenance badge
+    assert "T3" in out                          # the machine's one tool-table entry
+    get_paths = [c["endpoint"] for c in api.of("GET")]
+    assert "/tool-table-entry-records?machine_id=machineid1" in get_paths
+
+
+def test_show_machine_notes_linked_tool_sets(monkeypatch, capsys):
+    # A tool set whose canonical.machine_id points at this machine is reported.
+    linked = {**TOOLSET, "canonical": {**TOOLSET["canonical"],
+              "machine_id": {"value": "machineid1", "source": "asserted:human@web"}}}
+
+    def fake(method, endpoint, **kw):
+        if method == "GET":
+            if endpoint.startswith("/machine-records"):
+                return {"items": [MACHINE]}
+            if endpoint == "/tool-set-records":
+                return {"items": [linked]}
+            if endpoint.startswith("/tool-table-entry-records"):
+                return {"items": [ENTRY]}
+        return {}
+    monkeypatch.setattr(transport, "make_request", fake)
+    cli.show_machine("machineid1")
+    out = capsys.readouterr().out
+    assert "Drawer A" in out
+    assert "linked" in out.lower()
+
+
+def test_show_machine_errors_on_no_match(api, capsys):
+    with pytest.raises(SystemExit):
+        cli.show_machine("nope")
+    assert "no machine matches" in capsys.readouterr().err
+
+
+def test_show_key_resolves_by_id_and_shows_block(monkeypatch, capsys):
+    monkeypatch.setattr(transport, "make_request", lambda *a, **k: [
+        {"id": "keyid1", "name": "CI", "scopes": ["read", "write"],
+         "tags": ["prod"], "is_active": True, "created_at": "t1",
+         "expires_at": "t2", "last_used_at": "t3"}])
+    cli.show_key("keyid1")
+    out = capsys.readouterr().out
+    assert "keyid1" in out
+    assert "CI" in out
+    assert "active" in out
+    assert "read, write" in out
+    assert "prod" in out
+
+
+def test_show_key_resolves_by_name_prefix(monkeypatch, capsys):
+    monkeypatch.setattr(transport, "make_request", lambda *a, **k: [
+        {"id": "keyid1", "name": "CI deploy", "scopes": [], "is_active": True}])
+    cli.show_key("CI")
+    assert "keyid1" in capsys.readouterr().out
+
+
+def test_show_key_shows_revoked_state(monkeypatch, capsys):
+    monkeypatch.setattr(transport, "make_request", lambda *a, **k: [
+        {"id": "keyid1", "name": "old", "scopes": [], "is_active": False}])
+    cli.show_key("keyid1")
+    assert "REVOKED" in capsys.readouterr().out
+
+
+def test_show_key_errors_on_no_match(monkeypatch, capsys):
+    monkeypatch.setattr(transport, "make_request", lambda *a, **k: [
+        {"id": "keyid1", "name": "CI", "scopes": [], "is_active": True}])
+    with pytest.raises(SystemExit):
+        cli.show_key("zzz")
+    assert "no API key matches" in capsys.readouterr().err
+
+
+def test_show_key_errors_on_ambiguous(monkeypatch, capsys):
+    monkeypatch.setattr(transport, "make_request", lambda *a, **k: [
+        {"id": "keyaa1", "name": "one", "scopes": [], "is_active": True},
+        {"id": "keyaa2", "name": "two", "scopes": [], "is_active": True}])
+    with pytest.raises(SystemExit):
+        cli.show_key("keyaa")
+    assert "ambiguous" in capsys.readouterr().err
+
+
 def test_audit_reads_logs_list(api, capsys):
     # the /audit-logs response nests rows under "logs" (not "items")
     cli.list_audit()

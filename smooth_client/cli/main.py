@@ -883,6 +883,117 @@ def show_catalog_record(catalog):
     print("=" * 78)
 
 
+def show_tool(record_handle):
+    """Show one tool instance record with full provenance — every canonical field
+    with the source that vouches for it (mirrors show-catalog-record). RECORD
+    resolves by id, name, or unique prefix."""
+    rec = _resolve_record(record_handle)
+    canonical = rec.get("canonical") or {}
+    print(f"\nTool Record {_rid(rec)}")
+    print("=" * 78)
+    for key in ("name", "status", "item_type"):
+        leaf = canonical.get(key)
+        if isinstance(leaf, dict) and "source" in leaf:
+            _print_field(key, leaf)
+    # The catalog link is only interesting when the instance actually points at a
+    # catalog record (an unbound-to-catalog instance carries a null leaf).
+    cat = canonical.get("catalog_type_id")
+    if isinstance(cat, dict) and cat.get("value") is not None:
+        _print_field("catalog_type_id", cat)
+    geometry = canonical.get("geometry") or {}
+    present = {k: v for k, v in geometry.items() if isinstance(v, dict)}
+    if present:
+        print("  geometry:")
+        for gkey, leaf in present.items():
+            _print_field(gkey, leaf, indent="    ")
+    # An assembly carries canonical.components; summarize the parts it is built from.
+    components = canonical.get("components")
+    if isinstance(components, list) and components:
+        print(f"  components: {len(components)} part(s)")
+        for comp in components:
+            cid = comp.get("tool_record_id") or comp.get("id")
+            cname = comp.get("name") or (str(cid)[:8] if cid else "?")
+            role = comp.get("role")
+            print(f"    {cname}{f' [{role}]' if role else ''}")
+    print("=" * 78)
+
+
+def show_machine(machine_handle):
+    """Show one machine with provenance, a summary of its tool table (each
+    entry's number, description, and bind state), and any tool sets linked to it.
+    MACHINE resolves by id, name, or unique prefix."""
+    machine = _resolve_machine(machine_handle)
+    canonical = machine.get("canonical") or {}
+    print(f"\nMachine {_rid(machine)}")
+    print("=" * 78)
+    for key in ("name", "controller_type"):
+        leaf = canonical.get(key)
+        if isinstance(leaf, dict) and "source" in leaf:
+            _print_field(key, leaf)
+    entries = _client().list_entries(_rid(machine))
+    plural = "entries" if len(entries) != 1 else "entry"
+    print(f"  Tool table: {len(entries)} {plural}")
+    for e in entries:
+        rec_id = _cval(e, "bound_instance_id")
+        state = f"bound -> {str(rec_id)[:8]}" if rec_id else "unbound"
+        print(f"    T{_cval(e, 'tool_number')}: {_cval(e, 'description') or '—'}  [{state}]")
+    linked = [s for s in _client().list_tool_sets()
+              if _cval(s, "machine_id") == _rid(machine)]
+    if linked:
+        plural = "sets" if len(linked) != 1 else "set"
+        print(f"  Tool {plural} linked: {len(linked)}")
+        for s in linked:
+            print(f"    {_cval(s, 'name') or str(_rid(s))[:8]}")
+    print("=" * 78)
+
+
+def _resolve_key(handle: str) -> Dict[str, Any]:
+    """Resolve an API key by exact id, unique id-prefix, or name. API keys are
+    PLAIN dicts (not sectioned records), so this matches on the flat id/name
+    fields rather than internal.id/canonical.name. Exits with a helpful message
+    on no/ambiguous match (mirrors _match_id)."""
+    keys = _client().list_keys()
+    exact = [k for k in keys if k.get("id") == handle]
+    if exact:
+        return exact[0]
+    by_name = [k for k in keys if k.get("name") == handle]
+    if len(by_name) == 1:
+        return by_name[0]
+    matches = [k for k in keys if str(k.get("id") or "").startswith(handle)]
+    if not matches:
+        matches = [k for k in keys if str(k.get("name") or "").startswith(handle)]
+    if not matches:
+        print(f"Error: no API key matches '{handle}'", file=sys.stderr)
+        sys.exit(1)
+    if len(matches) > 1:
+        print(f"Error: '{handle}' is ambiguous ({len(matches)} API keys):", file=sys.stderr)
+        for k in matches:
+            print(f"  {str(k.get('id'))[:8]}  {k.get('name') or ''}", file=sys.stderr)
+        sys.exit(1)
+    return matches[0]
+
+
+def show_key(handle):
+    """Show one API key (id, name, status, scopes, tags, dates) — the same block
+    list-keys prints. KEY resolves by exact id, unique id-prefix, or name."""
+    key = _resolve_key(handle)
+    print(f"\nAPI Key {key.get('id')}")
+    print("=" * 78)
+    print(f"  ID: {key.get('id')}")
+    print(f"  Name: {key.get('name')}")
+    print(f"  Status: {'active' if key.get('is_active', True) else 'REVOKED'}")
+    print(f"  Scopes: {', '.join(key.get('scopes', []))}")
+    if key.get('tags'):
+        print(f"  Tags: {', '.join(key.get('tags', []))}")
+    if key.get('created_at'):
+        print(f"  Created: {key.get('created_at')}")
+    if key.get('expires_at'):
+        print(f"  Expires: {key.get('expires_at')}")
+    if key.get('last_used_at'):
+        print(f"  Last Used: {key.get('last_used_at')}")
+    print("=" * 78)
+
+
 def _parse_entry(spec):
     """Parse a --entry spec 'N[:description[:diameter]]' into a tool-table entry."""
     parts = spec.split(":")
@@ -1097,10 +1208,15 @@ def main():
   smooth create-record --from-catalog B201 \\
     --qa qa.json --cert "kennametal@SN12345"           # + manufacturer QA
 
-  # Inspect
+  # Inspect (list, then drill into one by id / unique prefix / name)
   smooth list-machines
+  smooth show-machine millstone        # + its tool table and linked sets
   smooth list-tools
+  smooth show-tool "1/4 downcut"       # one instance with full provenance
   smooth list-tool-sets
+  smooth show-tool-set "Aluminum job"
+  smooth list-keys
+  smooth show-key <key_id>             # one API key (id/prefix/name)
   smooth pending                       # binding proposals awaiting review
   smooth audit --limit 20
 
@@ -1202,6 +1318,16 @@ Environment Variables:
     list_parser = subparsers.add_parser("list-keys", help="List all API keys")
     list_parser.set_defaults(func=lambda _: list_keys())
 
+    # === show-key ===
+    show_key_parser = subparsers.add_parser(
+        "show-key",
+        help="Show one API key (id, name, status, scopes, tags, dates)",
+        description="Show a single API key's details. KEY resolves by exact id, "
+                    "unique id-prefix, or name.",
+    )
+    show_key_parser.add_argument("key", help="API key id, unique prefix, or name")
+    show_key_parser.set_defaults(func=lambda args: show_key(args.key))
+
     # === revoke-key ===
     revoke_parser = subparsers.add_parser("revoke-key", help="Revoke an API key")
     revoke_parser.add_argument("key_id", help="ID of the key to revoke")
@@ -1258,10 +1384,30 @@ Environment Variables:
     )
     list_machines_parser.set_defaults(func=lambda _: list_machines())
 
+    show_machine_parser = subparsers.add_parser(
+        "show-machine",
+        help="Show one machine with its tool table and linked tool sets",
+        description="Show a machine with provenance, a summary of its tool-table "
+                    "entries (number, description, bind state), and any tool sets "
+                    "linked to it. MACHINE resolves by id, name, or unique prefix.",
+    )
+    show_machine_parser.add_argument("machine", help="Machine id, name, or unique prefix")
+    show_machine_parser.set_defaults(func=lambda args: show_machine(args.machine))
+
     list_tools_parser = subparsers.add_parser(
         "list-tools", help="List tool records (the public facade)"
     )
     list_tools_parser.set_defaults(func=lambda _: list_tools())
+
+    show_tool_parser = subparsers.add_parser(
+        "show-tool",
+        help="Show one tool instance record with provenance",
+        description="Show a tool instance record's canonical fields, each with "
+                    "the source that vouches for it. RECORD resolves by id, name, "
+                    "or unique prefix.",
+    )
+    show_tool_parser.add_argument("record", help="Tool record id, name, or unique prefix")
+    show_tool_parser.set_defaults(func=lambda args: show_tool(args.record))
 
     tool_table_parser = subparsers.add_parser(
         "tool-table", help="Show a machine's tool-table entries and bind state"
