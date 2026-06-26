@@ -4,6 +4,14 @@ Python client for [Smooth Core](https://github.com/loobric/smooth-core) — the
 library and CLI for synchronizing CNC tool data. It speaks only the public REST
 API and depends on nothing from the server.
 
+> **New in v0.4.0 — a seed script + a public sandbox.**
+> [`examples/quickstart.sh`](examples/quickstart.sh) is a readable list of plain
+> `smooth` commands that seeds an account with a small demo catalog (two
+> manufacturers) and walks the whole loop — machine → catalog → instance → tool
+> set → tool-table push. Run it to give a fresh account something to explore;
+> read it to learn how to script the CLI. Point it at the free hosted sandbox and
+> kick the tires without installing a server. See [docs/SANDBOX.md](docs/SANDBOX.md).
+>
 > **New in v0.3.0 — full list/show symmetry.** Every listable entity now has a
 > matching `show` verb: `show-machine`, `show-tool`, and `show-key` join the
 > existing `show-*` commands, each resolving its target by id, name, or unique
@@ -33,6 +41,26 @@ today's importers (DIN 4000, STEP P21, GTC, SolidCAM, hyperMILL) are
 standard-library only, so the package stays vendorable and runs in constrained
 interpreters. The optional `[importers]` extra is reserved for future formats
 that need heavier parsers; no bundled importer requires it yet.
+
+## Try the sandbox
+
+Don't want to run a server yet? Point the client at the free hosted **sandbox**
+and explore against live data:
+
+```bash
+pip install loobric-smooth
+export SMOOTH_BASE_URL=https://api.loobric.com
+smooth register you@example.com        # create an account
+smooth login you@example.com           # then mint a key (below)
+smooth create-key sandbox --scopes "read write"
+export SMOOTH_API_KEY=<the key it prints>    # the CLI reads this automatically
+curl -O https://raw.githubusercontent.com/loobric/loobric-smooth/master/examples/quickstart.sh
+bash quickstart.sh                     # seed a demo and walk the loop
+```
+
+The sandbox is a shared demo server — **data may be reset and accounts removed,
+so keep nothing real there.** Full walkthrough (and why API keys, not sessions):
+[docs/SANDBOX.md](docs/SANDBOX.md).
 
 ## Library
 

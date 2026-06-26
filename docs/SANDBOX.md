@@ -1,0 +1,125 @@
+# Try the Smooth sandbox
+
+The sandbox is a free, shared Smooth server at **`https://api.loobric.com`**.
+It lets you exercise the whole tool-data loop — the `smooth` CLI, the FreeCAD
+addon, and the LinuxCNC client — without installing a server of your own.
+
+> ⚠️ **It's a playground, not storage.** The sandbox is shared and may be reset
+> at any time; data and accounts can be removed without notice. Keep nothing
+> real here. For anything you care about, [self-host](https://github.com/loobric/smooth-core)
+> — it's the same Docker image, free and AGPL-3.0.
+
+## 1. Install the client
+
+```bash
+pip install loobric-smooth
+```
+
+Library + `smooth` CLI, standard-library only, no dependencies.
+
+## 2. Point at the sandbox
+
+Set this once and every command targets the sandbox — no `--base-url` needed:
+
+```bash
+export SMOOTH_BASE_URL=https://api.loobric.com
+smooth ping        # confirm the server is reachable
+```
+
+## 3. Create an account
+
+```bash
+smooth register you@example.com
+```
+
+You'll be prompted for a password (or pass `--password`). Registration is open —
+no invite code.
+
+## 4. Get an API key (do this — don't rely on the login session)
+
+The sandbox stores login sessions **in memory**, so they're dropped whenever the
+server restarts or redeploys. **API keys persist**, so the moment-to-moment
+sandbox experience is much smoother with a key. Log in once to mint one:
+
+```bash
+smooth login you@example.com
+smooth create-key sandbox --scopes "read write"
+export SMOOTH_API_KEY=<the key it prints>
+```
+
+With `SMOOTH_API_KEY` exported, the client authenticates with the key on every
+call (it takes precedence over the session cookie), so you keep working across
+redeploys. If a `smooth` command ever says you're not authenticated even though
+you logged in, that's the session expiring — the API key avoids it.
+
+## 5. Do something interesting
+
+Grab the seed script and run it:
+
+```bash
+curl -O https://raw.githubusercontent.com/loobric/loobric-smooth/master/examples/quickstart.sh
+bash quickstart.sh
+```
+
+[`quickstart.sh`](https://github.com/loobric/loobric-smooth/blob/master/examples/quickstart.sh)
+is just a readable list of `smooth` commands — **open it in your editor** to see
+exactly what it does and to learn how to script the CLI yourself. It seeds a
+small demo catalog (a handful of endmills, drills, a V-bit, a face mill — across
+two plausible manufacturers) and walks the whole loop:
+
+1. creates a demo machine (`sandbox-mill`),
+2. seeds the catalog,
+3. turns a couple of catalog entries into physical **tool instances**,
+4. collects them in a **tool set**, and
+5. pushes a machine **tool table** (as a stand-in controller).
+
+It's meant for a fresh account. Then explore what it built:
+
+```bash
+smooth list-catalog-records          # the seeded catalog
+smooth list-tools                    # your physical instances
+smooth show-tool-set "Sandbox demo set"
+smooth show-machine sandbox-mill     # its tool table + linked sets
+smooth pending                       # binding proposals awaiting review
+smooth audit --limit 20              # the full provenance trail
+```
+
+Every field carries its **source** (who asserted or observed it) — that
+provenance is the point of Smooth, and `show-*`/`audit` make it visible.
+
+You can also import a real vendor export instead of the demo seed:
+
+```bash
+smooth import your-tools.csv --dry-run    # DIN 4000, STEP P21, GTC, SolidCAM, hyperMILL
+```
+
+## 6. Optional: the FreeCAD and LinuxCNC clients
+
+Both clients can target the same sandbox account using the API key from step 4.
+
+- **FreeCAD** — install the [smooth-freecad](https://github.com/loobric/smooth-freecad)
+  addon, open its preferences, confirm the server URL is
+  `https://api.loobric.com`, and paste your API key. Its README has a
+  "Try against the sandbox" section.
+- **LinuxCNC** — the single-file [smooth-linuxcnc](https://github.com/loobric/smooth-linuxcnc)
+  client reads its server from the environment:
+
+  ```bash
+  export SMOOTH_API_URL=https://api.loobric.com
+  export SMOOTH_API_KEY=<your sandbox key>
+  ```
+
+## Reset or clean up
+
+```bash
+smooth reset --yes        # wipe your tool data (keeps your login + keys)
+smooth revoke-key <id>    # revoke a key you created
+```
+
+## Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| `Base URL required` | `export SMOOTH_BASE_URL=https://api.loobric.com` |
+| `401` / "not authenticated" after a while | Your session expired — use the API key (step 4) |
+| `409` on import or seed | That record already exists (matched by natural key) — not an error |

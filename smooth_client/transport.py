@@ -71,6 +71,35 @@ def save_session(email: str = None):
             print(f"Warning: Could not save session: {e}", file=sys.stderr)
 
 
+def save_base_url(base_url: str, email: str = None):
+    """Persist just the base URL (and optional email) to the session file.
+
+    `register` has no session cookie yet but should still pin the server it ran
+    against, so the user's next command targets the same place without
+    re-passing --base-url or re-exporting SMOOTH_BASE_URL. Merges with any
+    existing session so a prior login's cookie is preserved.
+    """
+    if not base_url:
+        return
+    SESSION_DIR.mkdir(parents=True, exist_ok=True)
+    data = {}
+    if SESSION_FILE.exists():
+        try:
+            with open(SESSION_FILE, 'r') as f:
+                data = json.load(f)
+        except (json.JSONDecodeError, IOError):
+            data = {}
+    data['base_url'] = base_url
+    if email:
+        data['email'] = email
+    try:
+        with open(SESSION_FILE, 'w') as f:
+            json.dump(data, f)
+        SESSION_FILE.chmod(0o600)
+    except IOError as e:
+        print(f"Warning: Could not save base URL: {e}", file=sys.stderr)
+
+
 def clear_session():
     """Clear saved session file."""
     if SESSION_FILE.exists():

@@ -3,6 +3,31 @@
 All notable changes to **loobric-smooth** (the Smooth client library + `smooth` CLI)
 are recorded here. This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.4.0] — 2026-06-26
+
+### Added
+- **`examples/quickstart.sh`** — a readable shell script of plain `smooth`
+  commands that seeds an account with a small demo (a handful of endmills,
+  drills, a V-bit, a face mill, across two plausible manufacturers) and walks
+  the whole loop: machine → catalog → instance → tool set → tool-table push.
+  Run it to populate a fresh or sandbox account; read it to learn how to script
+  the CLI. (No new `smooth` subcommand — it's just the commands you'd type.)
+- **`docs/SANDBOX.md`** — an API-key-first walkthrough for the free hosted
+  sandbox at `https://api.loobric.com`.
+
+### Changed
+- **`SMOOTH_API_KEY` is now read from the environment automatically.** Export it
+  once (as `create-key` already advises) and every command authenticates with
+  the key — no need to repeat `--api-key`. Precedence is `--api-key` flag >
+  `SMOOTH_API_KEY` env > saved session cookie. This is the right default for the
+  sandbox, where login sessions are dropped on each server redeploy but API keys
+  persist.
+- **`smooth register` now pins the server it ran against** (saves `base_url` to
+  `~/.smooth/session.json`), so the next command targets the same server without
+  re-passing `--base-url`.
+- The "Base URL required" error now names the one-liner to fix it
+  (`export SMOOTH_BASE_URL=…`).
+
 ## [0.3.0] — 2026-06-23
 
 ### Added

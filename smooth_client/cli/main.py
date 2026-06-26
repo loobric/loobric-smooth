@@ -59,6 +59,11 @@ def register(email: str = None, password: str = None):
             sys.exit(1)
     
     data = _client().register(email, password)
+    # Pin the server we registered against so the next command targets it
+    # without re-passing --base-url (login would do this, but a user may run
+    # other commands between register and login).
+    if transport.BASE_URL:
+        transport.save_base_url(transport.BASE_URL, email=email)
     print("✓ Registration successful!")
     print(f"  User: {data.get('email', 'Unknown')}")
     if data.get('id'):
@@ -1714,20 +1719,30 @@ Environment Variables:
     # Load session first (for session-based auth)
     session_data = transport.load_session()
     
-    # Set API key only if explicitly provided via --api-key flag
-    # Environment variable is NOT used automatically to avoid conflicts with session auth
+    # API key precedence: --api-key flag > SMOOTH_API_KEY env > saved session
+    # cookie. The env var makes the create-key "export SMOOTH_API_KEY=…" advice
+    # actually take effect without repeating --api-key on every command — the
+    # right default for a sandbox, where sessions die on each redeploy but API
+    # keys persist. A flag still wins; the transport prefers a key over a cookie.
     if args.api_key:
         transport.API_KEY = args.api_key
-    
+    elif os.environ.get("SMOOTH_API_KEY"):
+        transport.API_KEY = os.environ["SMOOTH_API_KEY"]
+
     # Validate transport.BASE_URL is set
     if not transport.BASE_URL:
-        print("Error: Base URL required. Use --base-url, set SMOOTH_BASE_URL, or run 'smooth --login' first", file=sys.stderr)
+        print("Error: Base URL required. Set it once and every command targets "
+              "that server, e.g.:\n"
+              "  export SMOOTH_BASE_URL=https://api.loobric.com\n"
+              "or pass --base-url <url>, or run 'smooth --login' first.",
+              file=sys.stderr)
         sys.exit(1)
     
     if args.verbose:
         print(f"Base URL: {transport.BASE_URL}", file=sys.stderr)
         if transport.API_KEY:
-            print(f"Using API key from --api-key flag", file=sys.stderr)
+            src = "--api-key flag" if args.api_key else "$SMOOTH_API_KEY"
+            print(f"Using API key from {src}", file=sys.stderr)
         elif transport.SESSION_COOKIE:
             print(f"Using saved session from {transport.SESSION_FILE}", file=sys.stderr)
         else:
