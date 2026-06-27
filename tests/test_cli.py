@@ -781,6 +781,35 @@ def test_whoami_shows_server_account_and_build(api, capsys, monkeypatch):
     assert any(c["endpoint"] == "/version" for c in api.of("GET"))
 
 
+def test_version_shows_client_and_server(api, capsys, monkeypatch):
+    monkeypatch.setattr(transport, "BASE_URL", "http://nas:8000")
+    cli.show_version()
+    out = capsys.readouterr().out
+    assert "Client: loobric-smooth" in out               # the installed client version
+    assert "Server: 0.1.0 (abc123def456)" in out         # Recorder's /version payload
+    assert any(c["endpoint"] == "/version" for c in api.of("GET"))
+
+
+def test_version_without_base_url_is_graceful(monkeypatch, capsys):
+    monkeypatch.setattr(transport, "BASE_URL", "")
+    cli.show_version()                                    # must not raise or call out
+    out = capsys.readouterr().out
+    assert "Client: loobric-smooth" in out
+    assert "no base URL" in out
+
+
+def test_version_reports_old_server_without_version_endpoint(monkeypatch, capsys):
+    monkeypatch.setattr(transport, "BASE_URL", "http://nas:8000")
+
+    def fake(method, endpoint, **kwargs):
+        if endpoint == "/version":
+            raise cli.NotFound(404, "Not Found")
+        return {}
+    monkeypatch.setattr(transport, "make_request", fake)
+    cli.show_version()
+    assert "older server" in capsys.readouterr().out
+
+
 def test_whoami_reports_old_server_without_version_endpoint(monkeypatch, capsys):
     def fake(method, endpoint, **kwargs):
         if endpoint == "/version":

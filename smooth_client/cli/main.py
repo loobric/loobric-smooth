@@ -1053,6 +1053,40 @@ def reset_account(assume_yes=False):
     print(f"✓ Account reset — deleted {total} item(s).{(' ' + detail) if detail else ''}")
 
 
+def _client_version() -> str:
+    """This client package's installed version, or 'unknown' (e.g. when run from
+    a source checkout that was never installed)."""
+    try:
+        from importlib.metadata import version, PackageNotFoundError
+        try:
+            return version("loobric-smooth")
+        except PackageNotFoundError:
+            return "unknown"
+    except Exception:
+        return "unknown"
+
+
+def show_version():
+    """Show the client and server versions — no login required.
+
+    Unlike `whoami`, this needs no authentication: the server's build comes from
+    the unauthenticated /version endpoint. It's the quickest 'are my client and
+    server compatible / is my deploy current?' check."""
+    print(f"  Client: loobric-smooth {_client_version()}")
+    if not transport.BASE_URL:
+        print("  Server: (no base URL set — pass --base-url or set SMOOTH_BASE_URL)")
+        return
+    try:
+        v = _client().server_version()
+        print(f"  Server: {v.get('version', '?')} ({v.get('commit', '?')})  "
+              f"[{transport.BASE_URL}]")
+    except NotFound:
+        print(f"  Server: unknown — older server with no /version endpoint  "
+              f"[{transport.BASE_URL}]")
+    except SmoothClientError as e:
+        print(f"  Server: unreachable  [{transport.BASE_URL}]  ({e})")
+
+
 def whoami():
     """Show which server we're talking to, the authenticated account, and the
     server's build identity (the fastest 'is this the server/code I expect?'
@@ -1619,6 +1653,16 @@ Environment Variables:
                               help="Skip the confirmation prompt")
     reset_parser.set_defaults(func=lambda args: reset_account(args.yes))
 
+    # === version ===
+    version_parser = subparsers.add_parser(
+        "version",
+        help="Show client and server versions (no login required)",
+        description="Print this client's version and the server's build "
+                    "(from the unauthenticated /version endpoint). The quickest "
+                    "'are my client and server compatible?' check.",
+    )
+    version_parser.set_defaults(func=lambda _: show_version())
+
     # === whoami ===
     whoami_parser = subparsers.add_parser("whoami", help="Show the authenticated account")
     whoami_parser.set_defaults(func=lambda _: whoami())
@@ -1729,8 +1773,10 @@ Environment Variables:
     elif os.environ.get("SMOOTH_API_KEY"):
         transport.API_KEY = os.environ["SMOOTH_API_KEY"]
 
-    # Validate transport.BASE_URL is set
-    if not transport.BASE_URL:
+    # Validate transport.BASE_URL is set. `version` is exempt: it reports the
+    # client version with or without a server, and shows the server build only
+    # when a base URL happens to be configured.
+    if not transport.BASE_URL and getattr(args, "command", None) != "version":
         print("Error: Base URL required. Set it once and every command targets "
               "that server, e.g.:\n"
               "  export SMOOTH_BASE_URL=https://api.loobric.com\n"

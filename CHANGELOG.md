@@ -3,6 +3,16 @@
 All notable changes to **loobric-smooth** (the Smooth client library + `smooth` CLI)
 are recorded here. This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.4.1] — 2026-06-27
+
+### Added
+- **`smooth version`** — print this client's version and the server's build,
+  with **no login required** (the server build comes from the unauthenticated
+  `/version` endpoint). The quickest "are my client and server compatible / is
+  my deploy current?" check. Works even with no server configured (shows the
+  client version alone). Until now the server build was only visible via
+  `smooth whoami`, which requires authentication.
+
 ## [0.4.0] — 2026-06-26
 
 ### Added
