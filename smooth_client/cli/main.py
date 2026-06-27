@@ -1053,6 +1053,54 @@ def reset_account(assume_yes=False):
     print(f"✓ Account reset — deleted {total} item(s).{(' ' + detail) if detail else ''}")
 
 
+# The server's exact factory-reset confirmation phrase. Mirrored here so the CLI
+# can refuse early (and prompt for it) before sending anything.
+WIPE_PHRASE = "WIPE ALL DATA AND ACCOUNTS"
+
+
+def wipe_all(confirm=None):
+    """Factory reset (admin): wipe ALL data, accounts, and API keys — including
+    the calling admin. Guarded by an exact typed/`--confirm`ed phrase; there is
+    no undo."""
+    print("⚠ FACTORY RESET — deletes ALL data, ALL accounts, and ALL API keys on")
+    print("  the server, INCLUDING your own admin account and key. There is no undo.")
+    phrase = confirm
+    if phrase is None:
+        if not sys.stdin.isatty():
+            print(f"Refusing: pass --confirm '{WIPE_PHRASE}' to wipe everything "
+                  f"non-interactively.", file=sys.stderr)
+            sys.exit(1)
+        phrase = input(f"Type '{WIPE_PHRASE}' to confirm: ").strip()
+    if phrase != WIPE_PHRASE:
+        print("Aborted — confirmation phrase did not match.", file=sys.stderr)
+        sys.exit(1)
+    res = _client().wipe_all(phrase)
+    deleted = res.get("deleted", {}) or {}
+    total = sum(deleted.values()) if isinstance(deleted, dict) else 0
+    print(f"✓ Wiped everything — deleted {total} row(s) across {len(deleted)} table(s).")
+    print("  The server is now empty; the next account to register becomes admin.")
+    # Our own session and key were just deleted — drop the local session so a
+    # stale cookie isn't reused.
+    transport.SESSION_COOKIE = None
+    transport.clear_session()
+
+
+def change_password(current=None, new=None):
+    """Change the authenticated user's password (prompts when not given)."""
+    if not current:
+        current = getpass.getpass("Current password: ")
+    if not new:
+        new = getpass.getpass("New password: ")
+        if new != getpass.getpass("Confirm new password: "):
+            print("Error: new passwords do not match", file=sys.stderr)
+            sys.exit(1)
+    if not new:
+        print("Error: new password is required", file=sys.stderr)
+        sys.exit(1)
+    _client().change_password(current, new)
+    print("✓ Password changed.")
+
+
 def _client_version() -> str:
     """This client package's installed version, or 'unknown' (e.g. when run from
     a source checkout that was never installed)."""
@@ -1652,6 +1700,32 @@ Environment Variables:
     reset_parser.add_argument("--yes", "-y", action="store_true",
                               help="Skip the confirmation prompt")
     reset_parser.set_defaults(func=lambda args: reset_account(args.yes))
+
+    # === wipe-all (admin factory reset) ===
+    wipe_parser = subparsers.add_parser(
+        "wipe-all",
+        help="ADMIN: wipe ALL data, accounts, and keys — including yours (no undo)",
+        description="Factory reset (admin-only): delete ALL data, ALL accounts, "
+                    "and ALL API keys on the server, including the calling admin. "
+                    "Prompts for an exact confirmation phrase; pass --confirm to "
+                    "run non-interactively. There is no undo.",
+    )
+    wipe_parser.add_argument(
+        "--confirm", metavar="PHRASE",
+        help=f"The exact phrase '{WIPE_PHRASE}' (required when non-interactive)",
+    )
+    wipe_parser.set_defaults(func=lambda args: wipe_all(args.confirm))
+
+    # === change-password ===
+    change_pw_parser = subparsers.add_parser(
+        "change-password",
+        help="Change your password (prompts for current + new)",
+        description="Change the authenticated user's password. Prompts for the "
+                    "current and new password when not given as flags.",
+    )
+    change_pw_parser.add_argument("--current", help="Current password (prompted if omitted)")
+    change_pw_parser.add_argument("--new", help="New password (prompted if omitted)")
+    change_pw_parser.set_defaults(func=lambda args: change_password(args.current, args.new))
 
     # === version ===
     version_parser = subparsers.add_parser(

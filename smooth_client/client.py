@@ -395,3 +395,12 @@ class Client:
         """Wipe all of the caller's tool data, keeping the account + keys."""
         return self._call("POST", "/account/reset", body={})
 
+    # -- admin (factory reset) ----------------------------------------------
+    def wipe_all(self, confirm: str) -> Dict[str, Any]:
+        """FACTORY RESET (admin): delete ALL data, accounts, and API keys —
+        including the calling admin. `confirm` must be the server's exact
+        confirmation phrase or the server refuses with 400. There is no undo;
+        afterwards the database is empty and the next registration becomes the
+        new admin."""
+        return self._call("POST", "/admin/wipe", body={"confirm": confirm})
+

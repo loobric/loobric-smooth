@@ -3,15 +3,24 @@
 All notable changes to **loobric-smooth** (the Smooth client library + `smooth` CLI)
 are recorded here. This project adheres to [Semantic Versioning](https://semver.org/).
 
-## [0.4.1] — 2026-06-27
+## [0.5.0] — 2026-06-27
 
 ### Added
 - **`smooth version`** — print this client's version and the server's build,
   with **no login required** (the server build comes from the unauthenticated
   `/version` endpoint). The quickest "are my client and server compatible / is
   my deploy current?" check. Works even with no server configured (shows the
-  client version alone). Until now the server build was only visible via
+  client version alone). Previously the server build was only visible via
   `smooth whoami`, which requires authentication.
+- **`smooth change-password`** — change the authenticated user's password
+  (prompts for the current and new password, or takes `--current`/`--new`).
+  Wraps the existing `POST /auth/change-password` endpoint, which had no CLI verb.
+- **`smooth wipe-all`** — ADMIN factory reset: delete ALL data, ALL accounts, and
+  ALL API keys on the server, **including the calling admin**. Guarded by an exact
+  typed (or `--confirm`ed) phrase; there is no undo. After it runs the server is
+  empty and the next registration becomes the new admin. Requires
+  smooth-core ≥ 0.3.2 (new `POST /api/v1/admin/wipe` endpoint).
+  Distinct from `smooth reset`, which wipes only your tool data and keeps accounts.
 
 ## [0.4.0] — 2026-06-26
 

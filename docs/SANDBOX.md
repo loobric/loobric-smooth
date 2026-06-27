@@ -112,9 +112,24 @@ Both clients can target the same sandbox account using the API key from step 4.
 ## Reset or clean up
 
 ```bash
-smooth reset --yes        # wipe your tool data (keeps your login + keys)
-smooth revoke-key <id>    # revoke a key you created
+smooth reset --yes              # wipe YOUR tool data (keeps your login + keys)
+smooth revoke-key <id>          # revoke a key you created
+smooth change-password          # change your password (prompts for current + new)
 ```
+
+### Admin: factory-reset the whole sandbox
+
+The sandbox admin can wipe **everything** — all data, all accounts, and all API
+keys, including the admin's own — back to an empty server. The next account to
+register then becomes the new admin.
+
+```bash
+smooth wipe-all                 # prompts for the confirmation phrase
+# non-interactive:
+smooth wipe-all --confirm "WIPE ALL DATA AND ACCOUNTS"
+```
+
+There is no undo.
 
 ## Troubleshooting
 

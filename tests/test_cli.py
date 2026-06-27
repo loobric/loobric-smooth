@@ -134,6 +134,11 @@ class Recorder:
                                   "entity_type": "tool_table_entry_record",
                                   "entity_id": "slotid1"}], "total_count": 1}
         if method == "POST":
+            if endpoint == "/admin/wipe":
+                return {"wiped": True,
+                        "deleted": {"users": 1, "api_keys": 1, "machine_records": 1}}
+            if endpoint.endswith("/change-password"):
+                return {"message": "Password updated successfully"}
             if endpoint.endswith("/confirm"):
                 return {"status": "confirmed", "entry_id": "slotid1",
                         "instance_id": "instanceid1"}
@@ -716,6 +721,38 @@ def test_reset_hits_account_reset(api, capsys):
     cli.reset_account(assume_yes=True)
     assert api.last("POST")["endpoint"] == "/account/reset"
     assert "reset" in capsys.readouterr().out.lower()
+
+
+# ---------------------------------------------------------------------------
+# Admin factory reset (wipe-all) + change-password.
+# ---------------------------------------------------------------------------
+
+def test_wipe_all_sends_confirmation_and_clears_local_session(api, capsys, monkeypatch):
+    cleared = {"v": False}
+    monkeypatch.setattr(transport, "clear_session", lambda: cleared.__setitem__("v", True))
+    cli.wipe_all(confirm="WIPE ALL DATA AND ACCOUNTS")
+    post = api.last("POST")
+    assert post["endpoint"] == "/admin/wipe"
+    assert post["body"] == {"confirm": "WIPE ALL DATA AND ACCOUNTS"}
+    assert cleared["v"] is True                       # local session dropped after wipe
+    out = capsys.readouterr().out
+    assert "Wiped everything" in out
+    assert "next account to register becomes admin" in out
+
+
+def test_wipe_all_rejects_wrong_phrase_without_calling(api, capsys):
+    with pytest.raises(SystemExit):
+        cli.wipe_all(confirm="please wipe")
+    assert not api.of("POST")                          # nothing sent to the server
+    assert "did not match" in capsys.readouterr().err
+
+
+def test_change_password_posts_current_and_new(api, capsys):
+    cli.change_password(current="old-pw", new="new-pw")
+    post = api.last("POST")
+    assert post["endpoint"] == "/auth/change-password"
+    assert post["body"] == {"current_password": "old-pw", "new_password": "new-pw"}
+    assert "Password changed" in capsys.readouterr().out
 
 
 def test_list_keys_shows_revoked_state(monkeypatch, capsys):
